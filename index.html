@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mitt Custom Homey WebUI</title>
     
-    <!-- Päivitetty latauslinkki viralliseen Homey API -kirjastoon -->
-    <script type="text/javascript" src="https://athom.com"></script>
+    <!-- Vi laddar in Athom-API-biblioteket som är bäst anpassat för Homey Pro 2019 -->
+    <script type="text/javascript" src="https://jsdelivr.net"></script>
 
     <style>
         body {
@@ -60,15 +60,26 @@
             
             if (savedToken) {
                 document.getElementById('setup-box').style.display = 'none';
-                document.getElementById('status').innerText = `Ansluter till Homey Pro 2019...`;
+                document.getElementById('status').innerText = `Ansluter till Homey Pro 2019 via molnet...`;
 
                 try {
-                    // Käytetään uudempaa ja yhteensopivaa tunnistautumistapaa PAT-avaimelle
-                    const homeyApi = await window.AthomCloudAPI.createLocalAPI({
-                        token: savedToken
+                    // Vi skapar en instans med hjälp av det stabila AthomAPI-objektet
+                    const cloudApi = new window.AthomAPI.AthomCloudAPI({
+                        clientId: '5cbb50d62a1a755a5d13e2d6', 
+                        clientSecret: '06847d0840b8ee76a91f542618991fa9a82697cc',
+                        token: new window.AthomAPI.AthomCloudAPI.Token({
+                            access_token: savedToken
+                        })
                     });
 
-                    // Haetaan järjestelmätiedot testiksi
+                    // Vi hämtar användaren och din Homey Pro 2019-box
+                    const user = await cloudApi.getAuthenticatedUser();
+                    const firstHomey = await user.getFirstHomey();
+                    
+                    // Upprättar sessionen mot din hemma-box
+                    const homeyApi = await firstHomey.connect();
+
+                    // Hämtar systemnamnet för att verifiera anslutningen
                     const systemInfo = await homeyApi.system.getInfo();
                     document.getElementById('status').innerText = `Ansluten till: ${systemInfo.name}`;
                     
