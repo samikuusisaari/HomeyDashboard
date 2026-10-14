@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mitt Custom Homey WebUI</title>
+    
+    <!-- NYTT STEG A: Vi laddar in Homeys officiella API-bibliotek från internet -->
+    <script type="text/javascript" src="https://athom.com"></script>
+
     <style>
         body {
             background-color: #121212;
@@ -22,6 +26,10 @@
             margin: 20px;
         }
         h1 { color: #00e676; }
+        
+        /* Enkel styling för inmatningsfältet */
+        input, button { padding: 10px; margin: 10px; border-radius: 5px; border: none; }
+        button { background-color: #00e676; color: black; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -29,10 +37,63 @@
     <h1>Mitt Homey Dashboard</h1>
     <p>Det här är grunden till mitt helt egna WebUI!</p>
 
-    <div class="card">
-        <h3>Vardagsrum</h3>
-        <p>Status: Laddar...</p>
+    <!-- NYTT STEG B: En ruta där du klistrar in din nyckel första gången -->
+    <div id="setup-box">
+        <p>Ange din Homey API-nyckel för att ansluta utifrån:</p>
+        <input type="password" id="api-key-input" placeholder="Klistra in nyckel här...">
+        <button onclick="saveKey()">Anslut</button>
     </div>
 
+    <div class="card">
+        <h3>Vardagsrum</h3>
+        <!-- Vi har gett denna tagg ett ID (id="status") så att JavaScript kan ändra texten -->
+        <p id="status">Väntar på API-nyckel...</p>
+    </div>
+
+    <!-- NYTT STEG C: JavaScript-koden som gör själva jobbet -->
+    <script>
+        // 1. Den här funktionen körs när du klickar på "Anslut"-knappen
+        function saveKey() {
+            const key = document.getElementById('api-key-input').value;
+            if(key) {
+                // Sparar nyckeln säkert i din webbläsare (så du slipper skriva den varje gång)
+                localStorage.setItem('homey_api_key', key);
+                // Laddar om sidan för att starta anslutningen
+                location.reload(); 
+            }
+        }
+
+        // 2. Den här funktionen körs automatiskt varje gång sidan laddas
+        async function init() {
+            // Kolla om vi redan har sparat en nyckel i den här webbläsaren
+            const savedKey = localStorage.getItem('homey_api_key');
+            
+            if (savedKey) {
+                // Om nyckeln finns, döljer vi inmatningsrutan
+                document.getElementById('setup-box').style.display = 'none';
+                document.getElementById('status').innerText = `Ansluter till Homey via molnet...`;
+
+                try {
+                    // Vi skapar en anslutning till din Homey med din nyckel
+                    const homeyApi = await window.AthomCloudAPI.createLocalAPI({
+                        token: savedKey
+                    });
+
+                    // Vi hämtar information om din Homey-box
+                    const systemInfo = await homeyApi.system.getInfo();
+                    
+                    // Om allt lyckades ändrar vi texten i ditt Vardagsrum-kort!
+                    document.getElementById('status').innerText = `Ansluten till: ${systemInfo.name}`;
+                    
+                } catch (error) {
+                    // Om nyckeln var fel eller något gick tokigt visar vi felet här
+                    document.getElementById('status').innerText = "Anslutningsfel: " + error.message;
+                }
+            }
+        }
+
+        // Starta igång koden
+        init();
+    </script>
 </body>
 </html>
