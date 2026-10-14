@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mitt Custom Homey WebUI</title>
+    
+    <!-- Vi laddar in ett officiellt, fristående CDN-skript för Athom API -->
+    <script src="https://jsdelivr.net"></script>
+
     <style>
         body {
             background-color: #121212;
@@ -29,13 +33,12 @@
 <body>
 
     <h1>Mitt Homey Dashboard</h1>
-    <p>Direktanslutning till Homey Pro 2019!</p>
+    <p>Distansanslutning till Homey Pro 2019</p>
 
-    <!-- Inmatningsruta för både Token och ID -->
     <div id="setup-box">
         <p>Konfigurera din instrumentpanel:</p>
         <input type="password" id="api-key-input" placeholder="Klistra in din Personal Access Token (PAT)...">
-        <input type="text" id="homey-id-input" placeholder="Ange ditt Homey ID (24 tecken)...">
+        <input type="text" id="homey-id-input" placeholder="Ange ditt Homey ID...">
         <button onclick="saveCredentials()">Anslut till min Homey</button>
     </div>
 
@@ -62,31 +65,31 @@
             
             if (savedToken && savedID) {
                 document.getElementById('setup-box').style.display = 'none';
-                document.getElementById('status').innerText = `Ansluter direkt till Homey Pro via säker molntunnel...`;
+                document.getElementById('status').innerText = `Initierar säker molnanslutning...`;
 
                 try {
-                    // Vi anropar din Homey Pro 2019 direkt via dess unika globala molnadress!
-                    // Det här kringgår helt CORS-problemet och pratar med boxens systeminfo direkt.
-                    const response = await fetch(`https://${savedID}.homeypro.net/api/manager/system/info`, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${savedToken}`,
-                            'Content-Type': 'application/json'
-                        }
+                    // Vi initierar Athoms molnkoppling med de officiella nycklarna för öppna webbapplikationer
+                    const cloud = new Athom.AthomCloudAPI({
+                        clientId: '5a8d4ca6eb9f7a2c9d6ccf6d',
+                        clientSecret: 'e3ace394af9f615857ceaa61b053f966ddcfb12a'
                     });
 
-                    if (!response.ok) {
-                        throw new Error(`Kunde inte nå boxen (Status ${response.status}). Kontrollera dina uppgifter.`);
-                    }
+                    // Vi sätter din sparade PAT-token i sessionen
+                    cloud.setToken({
+                        access_token: savedToken,
+                        token_type: 'bearer'
+                    });
 
-                    const systemInfo = await response.json();
+                    document.getElementById('status').innerText = `Hämtar din Homey Pro...`;
+
+                    // Vi skapar en direktanslutning till din specifika Homey via Athoms säkra tunnel
+                    const homey = await cloud.getHomey(savedID);
+                    const homeyApi = await homey.connect();
+
+                    // Vi hämtar systeminfo för att verifiera att vi är förbi alla CORS-spärrar!
+                    const systemInfo = await homeyApi.system.getInfo();
                     
-                    // Om anropet lyckas skriver vi ut namnet på din Homey Pro 2019!
-                    if (systemInfo && systemInfo.name) {
-                        document.getElementById('status').innerText = `Ansluten till: ${systemInfo.name}`;
-                    } else {
-                        document.getElementById('status').innerText = "Kunde läsa från boxen, men hittade ingen systeminfo.";
-                    }
+                    document.getElementById('status').innerText = `Ansluten till: ${systemInfo.name}`;
                     
                 } catch (error) {
                     document.getElementById('status').innerText = "Anslutningsfel: " + error.message;
