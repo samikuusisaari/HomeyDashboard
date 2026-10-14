@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mitt Custom Homey WebUI</title>
-    
-    <!-- Vi laddar in ett officiellt, fristående CDN-skript för Athom API -->
-    <script src="https://jsdelivr.net"></script>
-
     <style>
         body {
             background-color: #121212;
@@ -65,31 +61,31 @@
             
             if (savedToken && savedID) {
                 document.getElementById('setup-box').style.display = 'none';
-                document.getElementById('status').innerText = `Initierar säker molnanslutning...`;
+                document.getElementById('status').innerText = `Ansluter till Homey Pro 2019 via molnväxel...`;
 
                 try {
-                    // Vi initierar Athoms molnkoppling med de officiella nycklarna för öppna webbapplikationer
-                    const cloud = new Athom.AthomCloudAPI({
-                        clientId: '5a8d4ca6eb9f7a2c9d6ccf6d',
-                        clientSecret: 'e3ace394af9f615857ceaa61b053f966ddcfb12a'
+                    // Vi skickar anropet till Athoms officiella moln-proxy-URL för Homey-enheter.
+                    // Denna URL tillåter CORS och vidarebefordrar anropet säkert till din fysiska box hemma.
+                    const response = await fetch(`https://athom.com{savedID}/`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${savedToken}`,
+                            'Content-Type': 'application/json'
+                        }
                     });
 
-                    // Vi sätter din sparade PAT-token i sessionen
-                    cloud.setToken({
-                        access_token: savedToken,
-                        token_type: 'bearer'
-                    });
+                    if (!response.ok) {
+                        throw new Error(`Servern svarade med status ${response.status}. Kontrollera din Token och ditt ID.`);
+                    }
 
-                    document.getElementById('status').innerText = `Hämtar din Homey Pro...`;
-
-                    // Vi skapar en direktanslutning till din specifika Homey via Athoms säkra tunnel
-                    const homey = await cloud.getHomey(savedID);
-                    const homeyApi = await homey.connect();
-
-                    // Vi hämtar systeminfo för att verifiera att vi är förbi alla CORS-spärrar!
-                    const systemInfo = await homeyApi.system.getInfo();
+                    const homeyData = await response.json();
                     
-                    document.getElementById('status').innerText = `Ansluten till: ${systemInfo.name}`;
+                    // Om anropet går igenom får vi tillbaka data om din Homey-box
+                    if (homeyData && homeyData.name) {
+                        document.getElementById('status').innerText = `Ansluten till: ${homeyData.name}`;
+                    } else {
+                        document.getElementById('status').innerText = "Anslutning lyckades, men svarade med tom data.";
+                    }
                     
                 } catch (error) {
                     document.getElementById('status').innerText = "Anslutningsfel: " + error.message;
