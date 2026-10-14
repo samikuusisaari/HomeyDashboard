@@ -18,74 +18,74 @@
             border-radius: 15px;
             padding: 20px;
             display: inline-block;
-            min-width: 200px;
+            min-width: 250px;
             margin: 20px;
         }
         h1 { color: #00e676; }
-        input, button { padding: 10px; margin: 10px; border-radius: 5px; border: none; }
+        input, button { padding: 10px; margin: 10px; border-radius: 5px; border: none; display: block; width: 80%; max-width: 300px; margin: 10px auto; }
         button { background-color: #00e676; color: black; font-weight: bold; cursor: pointer; }
-        textarea { width: 80%; height: 150px; background: #000; color: #00e676; font-family: monospace; border: 1px solid #333; padding: 10px; }
     </style>
 </head>
 <body>
 
     <h1>Mitt Homey Dashboard</h1>
-    
+    <p>Direktanslutning till Homey Pro 2019!</p>
+
+    <!-- Inmatningsruta för både Token och ID -->
     <div id="setup-box">
-        <p>Ange din Homey Personal Access Token (PAT):</p>
-        <input type="password" id="api-key-input" placeholder="pat-apps-...">
-        <button onclick="saveKey()">Anslut</button>
+        <p>Konfigurera din instrumentpanel:</p>
+        <input type="password" id="api-key-input" placeholder="Klistra in din Personal Access Token (PAT)...">
+        <input type="text" id="homey-id-input" placeholder="Ange ditt Homey ID (24 tecken)...">
+        <button onclick="saveCredentials()">Anslut till min Homey</button>
     </div>
 
     <div class="card">
-        <h3>Systemfelsökning</h3>
-        <p id="status">Väntar på token...</p>
-    </div>
-
-    <div id="debug-box" style="display:none;">
-        <p>Kopiera din <b>Cloud ID</b> eller <b>remoteUrl</b> härifrån:</p>
-        <textarea id="output" readonly></textarea>
+        <h3>Vardagsrum</h3>
+        <p id="status">Väntar på konfiguration...</p>
     </div>
 
     <script>
-        function saveKey() {
+        function saveCredentials() {
             const key = document.getElementById('api-key-input').value;
-            if(key) {
-                localStorage.setItem('homey_pat_token', key);
+            const id = document.getElementById('homey-id-input').value;
+            
+            if(key && id) {
+                localStorage.setItem('homey_pat_token', key.trim());
+                localStorage.setItem('homey_id', id.trim());
                 location.reload(); 
             }
         }
 
         async function init() {
             const savedToken = localStorage.getItem('homey_pat_token');
+            const savedID = localStorage.getItem('homey_id');
             
-            if (savedToken) {
+            if (savedToken && savedID) {
                 document.getElementById('setup-box').style.display = 'none';
-                document.getElementById('status').innerText = `Hämtar din Homey-adress...`;
+                document.getElementById('status').innerText = `Ansluter direkt till Homey Pro via säker molntunnel...`;
 
                 try {
-                    // Vi använder Athoms användar-endpoint för att lista din hårdvara
-                    const response = await fetch('https://api.athom.com/user/me', {
+                    // Vi anropar din Homey Pro 2019 direkt via dess unika globala molnadress!
+                    // Det här kringgår helt CORS-problemet och pratar med boxens systeminfo direkt.
+                    const response = await fetch(`https://${savedID}.homeypro.net/api/manager/system/info`, {
                         method: 'GET',
                         headers: {
-                            'Authorization': `Bearer ${savedToken}`
+                            'Authorization': `Bearer ${savedToken}`,
+                            'Content-Type': 'application/json'
                         }
                     });
 
                     if (!response.ok) {
-                        throw new Error(`Kunde inte hämta användarinfo (Status ${response.status})`);
+                        throw new Error(`Kunde inte nå boxen (Status ${response.status}). Kontrollera dina uppgifter.`);
                     }
 
-                    const data = await response.json();
+                    const systemInfo = await response.json();
                     
-                    if (data && data.homeys && data.homeys.length > 0) {
-                        document.getElementById('status').innerText = "Hittade din Homey Pro!";
-                        document.getElementById('debug-box').style.display = 'block';
-                        
-                        // Vi skriver ut all information om dina Homey-boxar i textrutan
-                        document.getElementById('output').value = JSON.stringify(data.homeys, null, 2);
+                    // Om anropet lyckas skriver vi ut namnet på din Homey Pro 2019!
+                    if (systemInfo && systemInfo.name) {
+                        document.getElementById('status').innerText = `Ansluten till: ${systemInfo.name}`;
                     } else {
-                        document.getElementById('status').innerText = "Hittade ingen Homey kopplad till din profil.";
+                        document.getElementById('status').innerText = "Kunde läsa från boxen, men hittade ingen systeminfo.";
                     }
                     
                 } catch (error) {
