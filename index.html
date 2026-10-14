@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mitt Custom Homey WebUI</title>
     
-    <!-- Ladataan vanhemmalle Homey-sukupolvelle sopiva Web API -kirjasto -->
-    <script type="text/javascript" src="https://jsdelivr.net"></script>
+    <!-- Päivitetty latauslinkki viralliseen Homey API -kirjastoon -->
+    <script type="text/javascript" src="https://athom.com"></script>
 
     <style>
         body {
@@ -35,7 +35,6 @@
     <h1>Mitt Homey Dashboard</h1>
     <p>Det här är grunden till mitt helt egna WebUI!</p>
 
-    <!-- Tähän syötetään kopioimasi PAT-avain -->
     <div id="setup-box">
         <p>Ange din Homey Personal Access Token (PAT):</p>
         <input type="password" id="api-key-input" placeholder="pat-apps-...">
@@ -51,7 +50,6 @@
         function saveKey() {
             const key = document.getElementById('api-key-input').value;
             if(key) {
-                // Tallennetaan token selaimeen
                 localStorage.setItem('homey_pat_token', key);
                 location.reload(); 
             }
@@ -65,24 +63,12 @@
                 document.getElementById('status').innerText = `Ansluter till Homey Pro 2019...`;
 
                 try {
-                    // Otetaan yhteys Homeyyn käyttäen Athomin pilvipalvelua välittäjänä,
-                    // jolloin yhteys toimii myös kodin ulkopuolelta ilman porttiohjauksia.
-                    const cloudApi = new AthomCloudAPI({
-                        clientId: '5cbb50d62a1a755a5d13e2d6', // Julkinen Homey-sovellustunnus
-                        clientSecret: '06847d0840b8ee76a91f542618991fa9a82697cc',
-                        token: new AthomCloudAPI.Token({
-                            access_token: savedToken
-                        })
+                    // Käytetään uudempaa ja yhteensopivaa tunnistautumistapaa PAT-avaimelle
+                    const homeyApi = await window.AthomCloudAPI.createLocalAPI({
+                        token: savedToken
                     });
 
-                    // Haetaan tiliisi liitetyt Homey-laitteet
-                    const user = await cloudApi.getAuthenticatedUser();
-                    const firstHomey = await user.getFirstHomey();
-                    
-                    // Muodostetaan varsinainen API-yhteys
-                    const homeyApi = await firstHomey.connect();
-
-                    // Haetaan järjestelmätiedot varmistukseksi
+                    // Haetaan järjestelmätiedot testiksi
                     const systemInfo = await homeyApi.system.getInfo();
                     document.getElementById('status').innerText = `Ansluten till: ${systemInfo.name}`;
                     
