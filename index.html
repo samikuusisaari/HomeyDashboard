@@ -24,14 +24,13 @@
         h1 { color: #00e676; }
         input, button { padding: 10px; margin: 10px; border-radius: 5px; border: none; }
         button { background-color: #00e676; color: black; font-weight: bold; cursor: pointer; }
+        textarea { width: 80%; height: 150px; background: #000; color: #00e676; font-family: monospace; border: 1px solid #333; padding: 10px; }
     </style>
 </head>
 <body>
 
     <h1>Mitt Homey Dashboard</h1>
-    <p>Det här är grunden till mitt helt egna WebUI!</p>
-
-    <!-- Inmatningsruta för din PAT-nyckel -->
+    
     <div id="setup-box">
         <p>Ange din Homey Personal Access Token (PAT):</p>
         <input type="password" id="api-key-input" placeholder="pat-apps-...">
@@ -39,8 +38,13 @@
     </div>
 
     <div class="card">
-        <h3>Vardagsrum</h3>
+        <h3>Systemfelsökning</h3>
         <p id="status">Väntar på token...</p>
+    </div>
+
+    <div id="debug-box" style="display:none;">
+        <p>Kopiera din <b>Cloud ID</b> eller <b>remoteUrl</b> härifrån:</p>
+        <textarea id="output" readonly></textarea>
     </div>
 
     <script>
@@ -56,32 +60,32 @@
             const savedToken = localStorage.getItem('homey_pat_token');
             
             if (savedToken) {
-                // Dölj inmatningsrutan om nyckeln finns
                 document.getElementById('setup-box').style.display = 'none';
-                document.getElementById('status').innerText = `Ansluter till Homey Pro via API...`;
+                document.getElementById('status').innerText = `Hämtar din Homey-adress...`;
 
                 try {
-                    // Vi gör ett direkt och rent HTTP-anrop till Homeys officiella moln-API utan krångliga bibliotek
-                    const response = await fetch('https://athom.com', {
+                    // Vi använder Athoms användar-endpoint för att lista din hårdvara
+                    const response = await fetch('https://api.athom.com/user/me', {
                         method: 'GET',
                         headers: {
-                            'Authorization': `Bearer ${savedToken}`,
-                            'Content-Type': 'application/json'
+                            'Authorization': `Bearer ${savedToken}`
                         }
                     });
 
                     if (!response.ok) {
-                        throw new Error(`Servern svarade med status ${response.status}`);
+                        throw new Error(`Kunde inte hämta användarinfo (Status ${response.status})`);
                     }
 
                     const data = await response.json();
                     
-                    // Homey API returnerar en lista över dina Homeys. Vi plockar den första i listan.
-                    if (data && data.length > 0) {
-                        const myHomey = data[0];
-                        document.getElementById('status').innerText = `Ansluten till: ${myHomey.name} (${myHomey.state})`;
+                    if (data && data.homeys && data.homeys.length > 0) {
+                        document.getElementById('status').innerText = "Hittade din Homey Pro!";
+                        document.getElementById('debug-box').style.display = 'block';
+                        
+                        // Vi skriver ut all information om dina Homey-boxar i textrutan
+                        document.getElementById('output').value = JSON.stringify(data.homeys, null, 2);
                     } else {
-                        document.getElementById('status').innerText = "Hittade ingen Homey kopplad till denna token.";
+                        document.getElementById('status').innerText = "Hittade ingen Homey kopplad till din profil.";
                     }
                     
                 } catch (error) {
@@ -91,7 +95,6 @@
             }
         }
 
-        // Starta anslutningen
         init();
     </script>
 </body>
